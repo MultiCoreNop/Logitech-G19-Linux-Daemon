@@ -30,9 +30,9 @@ class LogitechG19(object):
         @return 16bit highcolor value in little-endian.
 
         '''
-        rBits = (r * 2^5 / 255) & 0b00011111
-        gBits = (g * 2^6 / 255) & 0b00111111
-        bBits = (b * 2^5 / 255) & 0b00011111
+        rBits = (r * 2**5 / 255) & 0b00011111
+        gBits = (g * 2**6 / 255) & 0b00111111
+        bBits = (b * 2**5 / 255) & 0b00011111
         valueH = (rBits << 3) | (gBits >> 3)
         valueL = (gBits << 5) | bBits
         return valueL << 8 | valueH
@@ -73,8 +73,14 @@ class LogitechG19(object):
 
         @param data 320x240x2 bytes, containing the frame in little-endian
         16bit highcolor (5-6-5) format.
+        Image must be row-wise, starting at upper left corner and ending at
+        lower right.  This means (data[0], data[1]) is the first pixel and
+        (data[239 * 2], data[239 * 2 + 1]) the lower left one.
 
         '''
+        if len(data) != (320 * 240 * 2):
+            raise ValueError("illegal frame size: " + str(len(data))
+                    + " should be 320x240x2=" + str(320 * 240 * 2))
         self.__use_lcd_display()
         frame = [0x10, 0x0F, 0x00, 0x58, 0x02, 0x00, 0x00, 0x00,
                  0x00, 0x00, 0x00, 0x3F, 0x01, 0xEF, 0x00, 0x0F]
