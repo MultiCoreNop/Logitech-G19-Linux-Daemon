@@ -8,6 +8,8 @@ class LogitechG19(object):
         if not self.__device:
             raise usb.USBError("G19 not found on USB bus")
         self.__handle = self.__open_handle(self.__device)
+        self.__use_lcd_control()
+        self.__use_lcd_display()
 
     @staticmethod
     def _find_device(idVendor, idProduct):
@@ -120,6 +122,23 @@ class LogitechG19(object):
         valueL = value >> 8
         frame = [valueL, valueH] * (320 * 240)
         self.send_frame(frame)
+
+    def set_display_colorful(self):
+        '''This is an example how to create an image having a green to red
+        transition from left to right and a black to blue from top to bottom.
+
+        '''
+        data = []
+        for i in range(320 * 240 * 2):
+            data.append(0)
+        for x in range(320):
+            for y in range(240):
+                data[2*(x*240+y)] = lg19.rgb_to_uint16(
+                    255 * x / 320, 255 * (320 - x) / 320, 255 * y / 240) >> 8
+                data[2*(x*240+y)+1] = lg19.rgb_to_uint16(
+                    255 * x / 320, 255 * (320 - x) / 320, 255 * y / 240) & 0xff
+        self.send_frame(data)
+
 
 def main():
     pass
