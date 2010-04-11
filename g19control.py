@@ -54,6 +54,31 @@ class LogitechG19(object):
     def reset(self):
         self.__handle.reset()
 
+    def send_frame(self, data):
+        '''Sends a frame to display.
+
+        @param data 320x240x2 bytes, containing the frame in little-endian
+        16bit highcolor (5-6-5) format.
+
+        '''
+        self.__use_lcd_display()
+        frame = [0x10, 0x0F, 0x00, 0x58, 0x02, 0x00, 0x00, 0x00,
+                 0x00, 0x00, 0x00, 0x3F, 0x01, 0xEF, 0x00, 0x0F]
+        for i in range(16, 256):
+            frame.append(i)
+        for i in range(256):
+            frame.append(i)
+
+        for i in range(320 * 240 * 2):
+            frame.append(data[i])
+        # on avg. only every 2nd call succeeds - dunno why
+        while True:
+            try:
+                self.__handle.bulkWrite(2, frame, 100)
+                break
+            except usb.USBError:
+                time.sleep(0.01)
+
     def set_bg_color(self, r, g, b):
         self.__use_lcd_control()
         rtype = usb.TYPE_CLASS | usb.RECIP_INTERFACE
@@ -68,14 +93,6 @@ class LogitechG19(object):
         self.__handle.controlMsg(rtype, 0x0a, data, 0x0, 0x0)
 
     def set_display_color(self, r, g, b):
-        self.__use_lcd_display()
-        frame = [0x10, 0x0F, 0x00, 0x58, 0x02, 0x00, 0x00, 0x00,
-                 0x00, 0x00, 0x00, 0x3F, 0x01, 0xEF, 0x00, 0x0F]
-        for i in range(16, 256):
-            frame.append(i)
-        for i in range(256):
-            frame.append(i)
-
         # 16bit highcolor format: 5 red, 6 gree, 5 blue
         # saved in little-endian, because USB is little-endian
         rBits = (r * 2^5 / 255) & 0b00011111
@@ -83,17 +100,8 @@ class LogitechG19(object):
         bBits = (b * 2^5 / 255) & 0b00011111
         valueH = (rBits << 3) | (gBits >> 3)
         valueL = (gBits << 5) | bBits
-
-        for i in range(320 * 240):
-            frame.append(valueL)
-            frame.append(valueH)
-        # on avg. only every 2nd call succeeds - dunno why
-        while True:
-            try:
-                self.__handle.bulkWrite(2, frame, 100)
-                break
-            except usb.USBError:
-                time.sleep(0.01)
+        frame = [valueL, valueH] * (320 * 240)
+        self.send_frame(frame)
 
 def main():
     pass
