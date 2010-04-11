@@ -23,6 +23,20 @@ class LogitechG19(object):
         handle = dev.open()
         return handle
 
+    @staticmethod
+    def rgb_to_uint16(r, g, b):
+        '''Converts a RGB value to 16bit highcolor (5-6-5).
+
+        @return 16bit highcolor value in little-endian.
+
+        '''
+        rBits = (r * 2^5 / 255) & 0b00011111
+        gBits = (g * 2^6 / 255) & 0b00111111
+        bBits = (b * 2^5 / 255) & 0b00011111
+        valueH = (rBits << 3) | (gBits >> 3)
+        valueL = (gBits << 5) | bBits
+        return valueL << 8 | valueH
+
     def __use_lcd_control(self):
         try:
             self.__handle.releaseInterface()
@@ -95,11 +109,9 @@ class LogitechG19(object):
     def set_display_color(self, r, g, b):
         # 16bit highcolor format: 5 red, 6 gree, 5 blue
         # saved in little-endian, because USB is little-endian
-        rBits = (r * 2^5 / 255) & 0b00011111
-        gBits = (g * 2^6 / 255) & 0b00111111
-        bBits = (b * 2^5 / 255) & 0b00011111
-        valueH = (rBits << 3) | (gBits >> 3)
-        valueL = (gBits << 5) | bBits
+        value = self.rgb_to_uint16(r, g, b)
+        valueH = value & 0xff
+        valueL = value >> 8
         frame = [valueL, valueH] * (320 * 240)
         self.send_frame(frame)
 
