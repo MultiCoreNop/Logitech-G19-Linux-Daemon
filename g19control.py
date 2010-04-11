@@ -46,9 +46,14 @@ class LogitechG19(object):
         @return 16bit highcolor value in little-endian.
 
         '''
-        rBits = (r * 2**5 / 255) & 0b00011111
-        gBits = (g * 2**6 / 255) & 0b00111111
-        bBits = (b * 2**5 / 255) & 0b00011111
+        rBits = r * 2**5 / 255
+        gBits = g * 2**6 / 255
+        bBits = b * 2**5 / 255
+
+        rBits = rBits if rBits <= 0b00011111 else 0b00011111
+        gBits = gBits if gBits <= 0b00111111 else 0b00111111
+        bBits = bBits if bBits <= 0b00011111 else 0b00011111
+
         valueH = (rBits << 3) | (gBits >> 3)
         valueL = (gBits << 5) | bBits
         return valueL << 8 | valueH
