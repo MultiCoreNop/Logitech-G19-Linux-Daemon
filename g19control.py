@@ -2,6 +2,20 @@ import time
 import usb
 
 class LogitechG19(object):
+    '''Simple access to Logitech G19 features.
+
+    The G19 consists of two composite USB devices:
+        * 046d:c228
+          The keyboard consisting of two interfaces:
+              MI00 - the keyboard itself (2 endpoints)
+              MI01 - multimedia keys, incl. scroll and Winkey-switch
+                     (1 endpoint)
+        * 046d:c229
+          LCD display with two interfaces:
+              MI00 - the display itself (2 endpoints)
+              MI01 - M1..3/MR keys, G-keys, backlight, light-key (1 endpoint)
+
+    '''
 
     def __init__(self):
         self.__device = self._find_device(0x046d, 0xc229)
