@@ -26,7 +26,13 @@ def set_bg_color(dev, r, g, b):
     handle = open_lcd_control(dev)
     rtype = usb.TYPE_CLASS | usb.RECIP_INTERFACE
     colorData = [7, r, g, b]
-    handle.controlMsg(rtype, 0x09, colorData, 0x307, 0x01, 3000)
+    handle.controlMsg(rtype, 0x09, colorData, 0x307, 0x01)
+
+def set_display_brightness(dev, val):
+    '''val in [0,100]'''
+    data = [val, 0xe2, 0x12, 0x00, 0x8c, 0x11, 0x00, 0x10, 0x00]
+    rtype = usb.TYPE_VENDOR | usb.RECIP_INTERFACE
+    handle.controlMsg(rtype, 0x0a, data, 0x0, 0x0)
 
 def main():
     pass
@@ -36,4 +42,7 @@ def main():
 
 dev = find_device(0x046d, 0xc229)
 if dev:
-    set_bg_color(dev, 0, 255, 0)
+    set_bg_color(dev, 255, 255, 0)
+
+    handle = open_lcd_control(dev)
+    rtype = usb.TYPE_CLASS | usb.RECIP_INTERFACE
