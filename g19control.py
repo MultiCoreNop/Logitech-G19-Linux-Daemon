@@ -26,7 +26,7 @@ class LogitechG19(object):
     def __use_lcd_control(self):
         try:
             self.__handle.releaseInterface()
-        except ValueError:
+        except (ValueError, usb.USBError):
             pass
         config = self.__device.configurations[0]
         iface = config.interfaces[1][0]
@@ -40,7 +40,7 @@ class LogitechG19(object):
     def __use_lcd_display(self):
         try:
             self.__handle.releaseInterface()
-        except ValueError:
+        except (ValueError, usb.USBError):
             pass
         config = self.__device.configurations[0]
         iface = config.interfaces[0][0]
@@ -50,6 +50,9 @@ class LogitechG19(object):
             pass
         self.__handle.setConfiguration(config)
         self.__handle.claimInterface(iface)
+
+    def reset(self):
+        self.__handle.reset()
 
     def set_bg_color(self, r, g, b):
         self.__use_lcd_control()
@@ -64,7 +67,7 @@ class LogitechG19(object):
         rtype = usb.TYPE_VENDOR | usb.RECIP_INTERFACE
         self.__handle.controlMsg(rtype, 0x0a, data, 0x0, 0x0)
 
-    def set_display_color(self, b1, b2):
+    def set_display_color(self, r, g, b):
         self.__use_lcd_display()
         frame = [0x10, 0x0F, 0x00, 0x58, 0x02, 0x00, 0x00, 0x00,
                  0x00, 0x00, 0x00, 0x3F, 0x01, 0xEF, 0x00, 0x0F]
@@ -72,9 +75,18 @@ class LogitechG19(object):
             frame.append(i)
         for i in range(256):
             frame.append(i)
+
+        # 16bit highcolor format: 5 red, 6 gree, 5 blue
+        # saved in little-endian, because USB is little-endian
+        rBits = (r * 2^5 / 255) & 0b00011111
+        gBits = (g * 2^6 / 255) & 0b00111111
+        bBits = (b * 2^5 / 255) & 0b00011111
+        valueH = (rBits << 3) | (gBits >> 3)
+        valueL = (gBits << 5) | bBits
+
         for i in range(320 * 240):
-            frame.append(b1)
-            frame.append(b2)
+            frame.append(valueL)
+            frame.append(valueH)
         # on avg. only every 2nd call succeeds - dunno why
         while True:
             try:
