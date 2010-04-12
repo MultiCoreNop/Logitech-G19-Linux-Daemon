@@ -72,9 +72,11 @@ class LogitechG19(object):
     The G19 consists of two composite USB devices:
         * 046d:c228
           The keyboard consisting of two interfaces:
-              MI00 - the keyboard itself (2 endpoints)
-              MI01 - multimedia keys, incl. scroll and Winkey-switch
-                     (1 endpoint)
+              MI00: keyboard
+                  EP 0x81(in)  - INT the keyboard itself
+              MI01:
+                  EP 0x82(in)  - multimedia keys, incl. scroll and Winkey-switch
+
         * 046d:c229
           LCD display with two interfaces:
               MI00 (0x05):
@@ -184,13 +186,7 @@ class LogitechG19(object):
 
         for i in range(320 * 240 * 2):
             frame.append(data[i])
-        # on avg. only every 2nd call succeeds - dunno why
-        while True:
-            try:
-                self.__handle.bulkWrite(2, frame, 100)
-                break
-            except usb.USBError:
-                time.sleep(0.01)
+        self.__handle.bulkWrite(2, frame, 1000)
 
     def set_bg_color(self, r, g, b):
         self.__use_lcd_control()
