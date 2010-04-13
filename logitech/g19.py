@@ -68,7 +68,7 @@ SCROLL_UP = 0x20
 SCROLL_DOWN = 0x40
 
 
-class LogitechG19(object):
+class G19(object):
     '''Simple access to Logitech G19 features.
 
     The G19 consists of two composite USB devices:
@@ -266,4 +266,4 @@ def main():
 
 # if __name__ == '__main__':
 #     main()
-lg19 = LogitechG19()
+lg19 = G19()
