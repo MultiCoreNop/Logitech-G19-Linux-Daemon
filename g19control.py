@@ -1,5 +1,7 @@
 import time
 import usb
+import sys
+import PIL.Image as Img
 
 # data received from keyboard for M-keys
 # received packet is [0x02, 0x00, key, 0x40]
@@ -156,6 +158,22 @@ class LogitechG19(object):
         self.__handle.setConfiguration(config)
         self.__handle.claimInterface(iface)
 
+    def load_image(self, filename):
+        '''Loads image from given file.'''
+        img = Img.open(filename)
+        access = img.load()
+        if img.size != (320, 240):
+            img = img.resize((320, 240), Img.CUBIC)
+            access = img.load()
+        data = []
+        for x in range(320):
+            for y in range(240):
+                r, g, b = access[x, y]
+                val = self.rgb_to_uint16(r, g, b)
+                data.append(val >> 8)
+                data.append(val & 0xff)
+        self.send_frame(data)
+
     def reset(self):
         self.__use_lcd_display()
         self.__handle.reset()
@@ -186,7 +204,12 @@ class LogitechG19(object):
 
         for i in range(320 * 240 * 2):
             frame.append(data[i])
-        self.__handle.bulkWrite(2, frame, 1000)
+        while True:
+            try:
+                self.__handle.bulkWrite(2, frame, 100)
+                break;
+            except usb.USBError:
+                time.sleep(0.01)
 
     def set_bg_color(self, r, g, b):
         self.__use_lcd_control()
@@ -236,6 +259,9 @@ class LogitechG19(object):
 
 
 def main():
+#for img in sys.argv[1:]:
+#    lg19.load_image(img)
+#    time.sleep(1)
     pass
 
 # if __name__ == '__main__':
