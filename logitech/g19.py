@@ -227,7 +227,7 @@ class G19(object):
 
         '''
         rtype = usb.TYPE_CLASS | usb.RECIP_INTERFACE
-        colorData = [8, r, g, b]
+        colorData = [7, r, g, b]
         self.__usbDeviceMutex.acquire()
         try:
             self.__usbDevice.handleIf1.controlMsg(
