@@ -392,15 +392,16 @@ class G19UsbController(object):
         self.handleIf0.reset()
         self.handleIf1.reset()
 
+#def slide_show():
+#    for img in sys.argv[1:]:
+#        lg19.load_image(img)
+#        time.sleep(1)
 
 def main():
-#for img in sys.argv[1:]:
-#    lg19.load_image(img)
-#    time.sleep(1)
-    pass
-
-if __name__ == '__main__':
     lg19 = G19()
     lg19.start_event_handling()
     time.sleep(20)
     lg19.stop_event_handling()
+
+if __name__ == '__main__':
+    main()
