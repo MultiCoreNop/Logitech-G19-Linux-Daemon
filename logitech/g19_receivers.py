@@ -1,6 +1,5 @@
 from runnable import Runnable
 
-import threading
 import time
 
 class G19Receiver(Runnable):

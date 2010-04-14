@@ -5,12 +5,13 @@ import time
 import threading
 from logitech.g19 import *
 from logitech.g19_receivers import *
+from logitech.runnable import Runnable
 
 
-class EarthImageCreator(threading.Thread):
+class EarthImageCreator(Runnable):
     '''Thread for calling xplanet for specific angles.'''
 
-    def __init__(self, angleStart, angleStop, slot, dataStore):
+    def __init__(self, lg19, angleStart, angleStop, slot, dataStore):
         '''Creates images for angles [angleStart, angleStop] (including) and
         stores a the list of frames via dataStore.store(slot, frames).
 
@@ -18,11 +19,12 @@ class EarthImageCreator(threading.Thread):
         called.
 
         '''
-        threading.Thread.__init__(self)
-        self.__slot = slot
-        self.__dataStore = dataStore
+        Runnable.__init__(self)
         self.__angleStart = angleStart
         self.__angleStop = angleStop
+        self.__dataStore = dataStore
+        self.__lg19 = lg19
+        self.__slot = slot
 
     def run(self):
         frames = []
@@ -31,13 +33,15 @@ class EarthImageCreator(threading.Thread):
             os.close(handle)
             
             for i in range(self.__angleStart, self.__angleStop + 1):
+                if self.is_about_to_stop():
+                    break
                 cmdline = "xplanet -geometry 320x240 -output "
                 cmdline += filename
-                cmdline += " -num_times 1 -longitude "
+                cmdline += " -num_times 1 -latitude 40 -longitude "
                 cmdline += str(i)
                 os.system(cmdline)
-                frames.append( lg19.convert_image_to_frame(filename) );
-                dataStore.signal_frame_done()
+                frames.append( self.__lg19.convert_image_to_frame(filename) );
+                self.__dataStore.signal_frame_done()
         finally:
             os.remove(filename)
         self.__dataStore.store(self.__slot, frames)
@@ -46,11 +50,20 @@ class EarthImageCreator(threading.Thread):
 class DataStore(object):
     '''Maintains all xplanet generated frames.'''
 
-    def __init__(self):
+    def __init__(self, lg19):
+        self.__allFrames = []
+        self.__creators = []
         self.__numThreads = multiprocessing.cpu_count()
+        self.__lg19 = lg19
         self.__data = [[]] * self.__numThreads
         self.__lock = threading.Lock()
         self.__framesDone = 0
+
+    def abort_update(self):
+        self.__lock.acquire()
+        for creator in self.__creators:
+            creator.stop()
+        self.__lock.release()
 
     def get_data(self):
         '''Returns all currently available data.
@@ -60,11 +73,9 @@ class DataStore(object):
 
         '''
         self.__lock.acquire()
-        allFrames = []
-        for frame in self.__data:
-            allFrames += frame
+        frames = self.__allFrames
         self.__lock.release()
-        return allFrames
+        return frames
 
     def signal_frame_done(self):
         self.__lock.acquire()
@@ -78,7 +89,7 @@ class DataStore(object):
         self.__framesDone = 0
         self.__data = [[]] * self.__numThreads
         self.__lock.release()
-        creators = []
+        threads = []
 
         for i in range(self.__numThreads):
             perCpu = 360 / self.__numThreads
@@ -87,12 +98,24 @@ class DataStore(object):
                 angleStop = 359
             else:
                 angleStop = angleStart + perCpu - 1
-            c = EarthImageCreator(angleStart, angleStop, i, self)
-            creators.append(c)
+            c = EarthImageCreator(self.__lg19, angleStart, angleStop, i, self)
+            self.__lock.acquire()
+            self.__creators.append(c)
+            self.__lock.release()
             c.start()
+            t = threading.Thread(target=c.run)
+            threads.append(t)
+            t.start()
 
-        for creator in creators:
-            creator.join()
+        for t in threads:
+            t.join()
+
+        self.__lock.acquire()
+        self.__creators = []
+        self.__allFrames = []
+        for frame in self.__data:
+            self.__allFrames += frame
+        self.__lock.release()
 
     def store(self, slot, frames):
         self.__lock.acquire()
@@ -101,25 +124,60 @@ class DataStore(object):
         self.__lock.release()
 
 
-if __name__ == '__main__':
-    lg19 = G19()
+class XplanetRenderer(Runnable):
+    '''Renderer which renderes current data from DataStore.'''
 
-    frames = []
-    print "...loading frames..."
+    def __init__(self, lg19, dataStore):
+        Runnable.__init__(self)
+        self.__dataStore = dataStore
+        self.__fps = 25
+        self.__lastTime = time.clock()
+        self.__lg19 = lg19
 
-    dataStore = DataStore()
-    dataStore.update()
-    frames = dataStore.get_data()
-    print "done"
-
-    fps = 25
-    lastTime = time.clock()
-
-    while True:
+    def execute(self):
+        frames = self.__dataStore.get_data()
+        if not frames:
+            time.sleep(1)
+        counter = 0
         for frame in frames:
+            counter += 1
+            if counter > self.__fps:
+                counter = 0
+                if self.is_about_to_stop():
+                    break
             now = time.clock()
-            diff = lastTime - now + (1.0 / fps)
+            diff = self.__lastTime - now + (1.0 / self.__fps)
             if diff > 0:
                 time.sleep(diff)
-            lastTime = time.clock()
-            lg19.send_frame(frame)
+            self.__lastTime = time.clock()
+            self.__lg19.send_frame(frame)
+
+
+class Xplanet(object):
+
+    def __init__(self, lg19):
+        self.__dataStore = DataStore(lg19)
+        self.__lg19 = lg19
+        self.__renderer = XplanetRenderer(lg19, self.__dataStore)
+
+    def start(self):
+        t = threading.Thread(target=self.__dataStore.update)
+        t.start()
+        t = threading.Thread(target=self.__renderer.run)
+        self.__renderer.start()
+        t.start()
+
+    def stop(self):
+        self.__renderer.stop()
+        self.__dataStore.abort_update()
+
+
+if __name__ == '__main__':
+    lg19 = G19()
+    xplanet = Xplanet(lg19)
+    xplanet.start()
+    try:
+        while True:
+            time.sleep(10)
+    finally:
+        xplanet.stop()
