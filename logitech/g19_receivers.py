@@ -87,4 +87,4 @@ class G19Receiver(Runnable):
             print "dis: ", data
             gotData = True
         if not gotData:
-            time.sleep(0.02)
+            time.sleep(0.03)

@@ -73,6 +73,8 @@ SCROLL_DOWN = 0x40
 class G19(object):
     '''Simple access to Logitech G19 features.
 
+    All methods are thread-safe if not denoted otherwise.
+
     The G19 consists of two composite USB devices:
         * 046d:c228
           The keyboard consisting of two interfaces:
@@ -97,6 +99,30 @@ class G19(object):
         self.__usbDeviceMutex = threading.Lock()
         self.__keyReceiver = G19Receiver(self)
         self.__threadDisplay = None
+
+    @staticmethod
+    def convert_image_to_frame(filename):
+        '''Loads image from given file.
+
+        Format will be auto-detected.  If neccessary, the image will be resized
+        to 320x240.
+
+        @return Frame data to be used with send_frame().
+
+        '''
+        img = Img.open(filename)
+        access = img.load()
+        if img.size != (320, 240):
+            img = img.resize((320, 240), Img.CUBIC)
+            access = img.load()
+        data = []
+        for x in range(320):
+            for y in range(240):
+                r, g, b = access[x, y]
+                val = G19.rgb_to_uint16(r, g, b)
+                data.append(val >> 8)
+                data.append(val & 0xff)
+        return data
 
     @staticmethod
     def rgb_to_uint16(r, g, b):
@@ -134,19 +160,7 @@ class G19(object):
         to 320x240.
 
         '''
-        img = Img.open(filename)
-        access = img.load()
-        if img.size != (320, 240):
-            img = img.resize((320, 240), Img.CUBIC)
-            access = img.load()
-        data = []
-        for x in range(320):
-            for y in range(240):
-                r, g, b = access[x, y]
-                val = self.rgb_to_uint16(r, g, b)
-                data.append(val >> 8)
-                data.append(val & 0xff)
-        self.send_frame(data)
+        self.send_frame(self.convert_image_to_frame(filename))
 
     def read_g_and_m_keys(self, maxLen=20):
         '''Reads interrupt data from G, M and light switch keys.
@@ -158,7 +172,8 @@ class G19(object):
         self.__usbDeviceMutex.acquire()
         val = []
         try:
-            val = list(self.__usbDevice.handleIf1.interruptRead(0x83, maxLen))
+            val = list(self.__usbDevice.handleIf1.interruptRead(
+                0x83, maxLen, 10))
         except usb.USBError:
             pass
         finally:
@@ -174,7 +189,7 @@ class G19(object):
         self.__usbDeviceMutex.acquire()
         val = []
         try:
-            val = list(self.__usbDevice.handleIf0.interruptRead(0x81, 2))
+            val = list(self.__usbDevice.handleIf0.interruptRead(0x81, 2, 10))
         except usb.USBError:
             pass
         finally:
@@ -190,7 +205,7 @@ class G19(object):
         self.__usbDeviceMutex.acquire()
         val = []
         try:
-            val = list(self.__usbDevice.handleIfMM.interruptRead(0x82, 2))
+            val = list(self.__usbDevice.handleIfMM.interruptRead(0x82, 2, 10))
         except usb.USBError:
             pass
         finally:
@@ -240,17 +255,11 @@ class G19(object):
         for i in range(256):
             frame.append(i)
 
-        for i in range(320 * 240 * 2):
-            frame.append(data[i])
+        frame += data
 
         self.__usbDeviceMutex.acquire()
         try:
-            while True:
-                try:
-                    self.__usbDevice.handleIf0.bulkWrite(2, frame, 100)
-                    break;
-                except usb.USBError:
-                    time.sleep(0.01)
+            self.__usbDevice.handleIf0.bulkWrite(2, frame, 1000)
         finally:
             self.__usbDeviceMutex.release()
 
@@ -261,7 +270,7 @@ class G19(object):
         self.__usbDeviceMutex.acquire()
         try:
             self.__usbDevice.handleIf1.controlMsg(
-                rtype, 0x09, colorData, 0x307, 0x01, 1000)
+                rtype, 0x09, colorData, 0x307, 0x01, 10)
         finally:
             self.__usbDeviceMutex.release()
 
@@ -273,12 +282,16 @@ class G19(object):
         self.__usbDeviceMutex.acquire()
         try:
             self.__usbDevice.handleIf1.controlMsg(
-                rtype, 0x09, [5, keys], 0x305, 0x01, 1000)
+                rtype, 0x09, [5, keys], 0x305, 0x01, 10)
         finally:
             self.__usbDeviceMutex.release()
 
     def set_display_brightness(self, val):
-        '''val in [0,100]'''
+        '''Sets display brightness.
+        
+        @param val in [0,100] (off..maximum).
+        
+        '''
         data = [val, 0xe2, 0x12, 0x00, 0x8c, 0x11, 0x00, 0x10, 0x00]
         rtype = usb.TYPE_VENDOR | usb.RECIP_INTERFACE
         self.__usbDeviceMutex.acquire()
