@@ -199,7 +199,12 @@ class G19(object):
             self.__usbDeviceMutex.release()
 
     def set_enabled_m_keys(self, keys):
-        '''Sets currently lit keys as an OR-combination of KEY_M1..3, KEY_MR.
+        '''Sets currently lit keys as an OR-combination of LIGHT_KEY_M1..3,R.
+
+        example:
+            from logitech.g19_keys import Data
+            lg19 = G19()
+            lg19.set_enabled_m_keys(Data.LIGHT_KEY_M1 | Data.LIGHT_KEY_MR)
 
         '''
         rtype = usb.TYPE_CLASS | usb.RECIP_INTERFACE
