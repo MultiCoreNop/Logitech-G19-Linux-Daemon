@@ -1,101 +1,21 @@
+from g19_receivers import G19Receiver
+
 import sys
 import threading
 import time
 import usb
 import PIL.Image as Img
-from g19_receivers import G19Receiver
-
-# data received from keyboard for M-keys
-# received packet is [0x02, 0x00, key, 0x40]
-# these are also the bit fields for setting the currently illuminated keys
-# (see set_enabled_m_keys())
-KEY_M1 = 0x80
-KEY_M2 = 0x40
-KEY_M3 = 0x20
-KEY_MR = 0x10
-
-# special keys at display
-# The current state of pressed keys is an OR-combination of the following
-# codes.
-# Incoming data always has 0x80 appended, e.g. pressing and releasing the menu
-# key results in two INTERRUPT transmissions: [0x04, 0x80] and [0x00, 0x80]
-# Pressing (and holding) UP and OK at the same time results in [0x88, 0x80].
-KEY_BACK = 0x02
-KEY_DOWN = 0x40
-KEY_LEFT = 0x20
-KEY_MENU = 0x04
-KEY_OK = 0x08
-KEY_RIGHT = 0x10
-KEY_SETTINGS = 0x01
-KEY_UP = 0x80
-
-# specific codes sent by G-keys
-# received as [0x02, keyH, keyL, 0x40]
-# example: G3: [0x02, 0x04, 0x00, 0x40]
-#          G1 + G2 + G11: [0x03, 0x04, 0x00, 0x40]
-KEY_G01 = 0x0001
-KEY_G02 = 0x0002
-KEY_G03 = 0x0004
-KEY_G04 = 0x0008
-KEY_G05 = 0x0010
-KEY_G06 = 0x0020
-KEY_G07 = 0x0040
-KEY_G08 = 0x0080
-KEY_G09 = 0x0100
-KEY_G10 = 0x0200
-KEY_G11 = 0x0400
-KEY_G12 = 0x0800
-
-# light switch
-# this on is similar to G-keys:
-# down: [0x02, 0x00, 0x00, 0x48]
-# up:   [0x02, 0x00, 0x00, 0x40]
-KEY_LIGHT = 0x08
-
-# winkey switch to winkey off: [0x03, 0x01]
-# winkey switch to winkey on:  [0x03, 0x00]
-KEY_WIN_SWITCH = 0x0103
-
-# multimedia keys
-# received as [0x01, key]
-# example: NEXT+SCROLL_UP:       [0x01, 0x21]
-#          after scroll stopped: [0x01, 0x01]
-#          after release:        [0x01, 0x00]
-KEY_NEXT = 0x01
-KEY_PREV = 0x02
-KEY_STOP = 0x05
-KEY_PLAY = 0x08
-KEY_MUTE = 0x10
-SCROLL_UP = 0x20
-SCROLL_DOWN = 0x40
-
 
 class G19(object):
     '''Simple access to Logitech G19 features.
 
     All methods are thread-safe if not denoted otherwise.
 
-    The G19 consists of two composite USB devices:
-        * 046d:c228
-          The keyboard consisting of two interfaces:
-              MI00: keyboard
-                  EP 0x81(in)  - INT the keyboard itself
-              MI01:
-                  EP 0x82(in)  - multimedia keys, incl. scroll and Winkey-switch
-
-        * 046d:c229
-          LCD display with two interfaces:
-              MI00 (0x05): via control data in: display keys
-                  EP 0x81(in)  - INT
-                  EP 0x02(out) - BULK display itself
-              MI01 (0x06): backlight
-                  EP 0x83(in)  - INT G-keys, M1..3/MR key, light key
-
     '''
 
-    def __init__(self):
+    def __init__(self, resetOnStart=False):
         '''Initializes and opens the USB device.'''
-        self.__usbDevice = G19UsbController()
+        self.__usbDevice = G19UsbController(resetOnStart)
         self.__usbDeviceMutex = threading.Lock()
         self.__keyReceiver = G19Receiver(self)
         self.__threadDisplay = None
@@ -142,6 +62,10 @@ class G19(object):
         valueH = (rBits << 3) | (gBits >> 3)
         valueL = (gBits << 5) | bBits
         return valueL << 8 | valueH
+
+    def add_applet(self, applet):
+        '''Starts an applet.'''
+        self.__keyReceiver.add_input_processor(applet.get_input_processor())
 
     def fill_display_with_color(self, r, g, b):
         '''Fills display with given color.'''
@@ -288,9 +212,9 @@ class G19(object):
 
     def set_display_brightness(self, val):
         '''Sets display brightness.
-        
+
         @param val in [0,100] (off..maximum).
-        
+
         '''
         data = [val, 0xe2, 0x12, 0x00, 0x8c, 0x11, 0x00, 0x10, 0x00]
         rtype = usb.TYPE_VENDOR | usb.RECIP_INTERFACE
@@ -341,9 +265,27 @@ class G19(object):
 
 
 class G19UsbController(object):
-    '''Controller for accessing the G19 USB device.'''
+    '''Controller for accessing the G19 USB device.
 
-    def __init__(self):
+    The G19 consists of two composite USB devices:
+        * 046d:c228
+          The keyboard consisting of two interfaces:
+              MI00: keyboard
+                  EP 0x81(in)  - INT the keyboard itself
+              MI01: (ifacMM)
+                  EP 0x82(in)  - multimedia keys, incl. scroll and Winkey-switch
+
+        * 046d:c229
+          LCD display with two interfaces:
+              MI00 (0x05): (iface0) via control data in: display keys
+                  EP 0x81(in)  - INT
+                  EP 0x02(out) - BULK display itself
+              MI01 (0x06): (iface1) backlight
+                  EP 0x83(in)  - INT G-keys, M1..3/MR key, light key
+
+    '''
+
+    def __init__(self, resetOnStart=False):
         self.__lcd_device = self._find_device(0x046d, 0xc229)
         if not self.__lcd_device:
             raise usb.USBError("G19 LCD not found on USB bus")
@@ -351,6 +293,10 @@ class G19UsbController(object):
         if not self.__kbd_device:
             raise usb.USBError("G19 keyboard not found on USB bus")
         self.handleIf0 = self.__lcd_device.open()
+        if resetOnStart:
+            self.handleIf0.reset()
+            self.handleIf0 = self.__lcd_device.open()
+
         self.handleIf1 = self.__lcd_device.open()
         self.handleIfMM = self.__kbd_device.open()
         config = self.__lcd_device.configurations[0]
@@ -391,11 +337,6 @@ class G19UsbController(object):
         '''Resets the device on the USB.'''
         self.handleIf0.reset()
         self.handleIf1.reset()
-
-#def slide_show():
-#    for img in sys.argv[1:]:
-#        lg19.load_image(img)
-#        time.sleep(1)
 
 def main():
     lg19 = G19()
