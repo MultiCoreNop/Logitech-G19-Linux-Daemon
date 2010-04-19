@@ -51,9 +51,32 @@ class Key(object):
             SCROLL_UP,
             SCROLL_DOWN])
 
+    gmKeys = set([
+            G01,
+            G02,
+            G03,
+            G04,
+            G05,
+            G06,
+            G07,
+            G08,
+            G09,
+            G10,
+            G11,
+            G12,
+            LIGHT,
+            M1,
+            M2,
+            M3,
+            MR])
+
 
 class Data(object):
     '''Static container with all data values for all keys.'''
+
+    ##
+    ## display keys
+    ##
 
     # special keys at display
     # The current state of pressed keys is an OR-combination of the following
@@ -71,6 +94,11 @@ class Data(object):
     displayKeys[0x40] = Key.DOWN
     displayKeys[0x80] = Key.UP
 
+
+    ##
+    ## G- and M-Keys
+    ##
+
     # these are the bit fields for setting the currently illuminated keys
     # (see set_enabled_m_keys())
     LIGHT_KEY_M1 = 0x80
@@ -82,32 +110,53 @@ class Data(object):
     # received as [0x02, keyL, keyH, 0x40]
     # example: G3: [0x02, 0x04, 0x00, 0x40]
     #          G1 + G2 + G11: [0x02, 0x03, 0x04, 0x40]
-    KEY_G01 = 0x0001
-    KEY_G02 = 0x0002
-    KEY_G03 = 0x0004
-    KEY_G04 = 0x0008
-    KEY_G05 = 0x0010
-    KEY_G06 = 0x0020
-    KEY_G07 = 0x0040
-    KEY_G08 = 0x0080
-    KEY_G09 = 0x0100
-    KEY_G10 = 0x0200
-    KEY_G11 = 0x0400
-    KEY_G12 = 0x0800
-    KEY_M1 = 0x1000
-    KEY_M2 = 0x2000
-    KEY_M3 = 0x4000
-    KEY_MR = 0x8000
+    KEY_G01 = 0x000001
+    KEY_G02 = 0x000002
+    KEY_G03 = 0x000004
+    KEY_G04 = 0x000008
+    KEY_G05 = 0x000010
+    KEY_G06 = 0x000020
+    KEY_G07 = 0x000040
+    KEY_G08 = 0x000080
+    KEY_G09 = 0x000100
+    KEY_G10 = 0x000200
+    KEY_G11 = 0x000400
+    KEY_G12 = 0x000800
+    KEY_M1 = 0x001000
+    KEY_M2 = 0x002000
+    KEY_M3 = 0x004000
+    KEY_MR = 0x008000
 
     # light switch
     # this on is similar to G-keys:
     # down: [0x02, 0x00, 0x00, 0x48]
     # up:   [0x02, 0x00, 0x00, 0x40]
-    KEY_LIGHT = 0x08
+    KEY_LIGHT = 0x080000
 
-    # winkey switch to winkey off: [0x03, 0x01]
-    # winkey switch to winkey on:  [0x03, 0x00]
-    KEY_WIN_SWITCH = 0x0103
+    gmKeys = {}
+    gmKeys[KEY_G01] = Key.G01
+    gmKeys[KEY_G02] = Key.G02
+    gmKeys[KEY_G03] = Key.G03
+    gmKeys[KEY_G04] = Key.G04
+    gmKeys[KEY_G05] = Key.G05
+    gmKeys[KEY_G06] = Key.G06
+    gmKeys[KEY_G07] = Key.G07
+    gmKeys[KEY_G08] = Key.G08
+    gmKeys[KEY_G09] = Key.G09
+    gmKeys[KEY_G10] = Key.G10
+    gmKeys[KEY_G11] = Key.G11
+    gmKeys[KEY_G12] = Key.G12
+    gmKeys[KEY_G12] = Key.G12
+    gmKeys[KEY_M1] = Key.M1
+    gmKeys[KEY_M2] = Key.M2
+    gmKeys[KEY_M3] = Key.M3
+    gmKeys[KEY_MR] = Key.MR
+    gmKeys[KEY_LIGHT] = Key.LIGHT
+
+
+    ##
+    ## MM-keys
+    ##
 
     # multimedia keys
     # received as [0x01, key]
@@ -122,3 +171,8 @@ class Data(object):
     mmKeys[0x10] = Key.MUTE
     mmKeys[0x20] = Key.SCROLL_UP
     mmKeys[0x40] = Key.SCROLL_DOWN
+
+    # winkey switch to winkey off: [0x03, 0x01]
+    # winkey switch to winkey on:  [0x03, 0x00]
+    KEY_WIN_SWITCH = 0x0103
+

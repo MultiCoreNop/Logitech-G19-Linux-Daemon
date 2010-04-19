@@ -44,6 +44,29 @@ class State(object):
     def __init__(self):
         self.__keysDown = set()
 
+    def _data_to_keys_g_and_m(self, data):
+        '''Converts a G/M keys data package to a set of keys defined as
+        pressed by it.
+
+        '''
+        if len(data) != 4 or data[0] != 2:
+            raise ValueError("not a multimedia key packet: " + str(data))
+        empty = 0x400000
+        curVal = data[3] << 16 | data[2] << 8 | data[1]
+        keys = []
+        while curVal != empty:
+            foundAKey = False
+            for val in Data.gmKeys.keys():
+                if val & curVal == val:
+                    curVal ^= val
+                    keys.append(Data.gmKeys[val])
+                    foundAKey = True
+            if not foundAKey:
+                raise ValueError("incorrect g/m key packet: " +
+                        str(data))
+
+        return set(keys)
+
     def _data_to_keys_mm(self, data):
         '''Converts a multimedia keys data package to a set of keys defined as
         pressed by it.
@@ -115,23 +138,17 @@ class State(object):
         '''Mutates the state by given data packet from G- and M- keys.
 
         @param data Data packet received.
-        @return InputEvent for data packet.
+        @return InputEvent for data packet, or None if data packet was ignored.
 
         '''
         oldState = self.clone()
-        if len(data) != 2:
-            raise ValueError("incorrect multimedia key packet: " + str(data))
-        keys = self._data_to_keys_mm(data)
-        winKeySet = set([Key.WINKEY_SWITCH])
-        if data[0] == 1:
-            # update state of all mm keys
-            possibleKeys = Key.mmKeys.difference(winKeySet)
-            keysDown, keysUp = self._update_keys_down(possibleKeys, keys)
-        else:
-            # update winkey state
-            keysDown, keysUp = self._update_keys_down(winKeySet, keys)
-        newState = self.clone()
-        return InputEvent(oldState, newState, keysDown, keysUp)
+        evt = None
+        if len(data) == 4:
+            keys = self._data_to_keys_g_and_m(data)
+            keysDown, keysUp = self._update_keys_down(Key.gmKeys, keys)
+            newState = self.clone()
+            evt = InputEvent(oldState, newState, keysDown, keysUp)
+        return evt
 
     def packet_received_mm(self, data):
         '''Mutates the state by given data packet from multimedia keys.
@@ -180,14 +197,23 @@ class G19Receiver(Runnable):
         data = self.__g19.read_multimedia_keys()
         if data:
             evt = self.__state.packet_received_mm(data)
-            for proc in processors:
-                if proc.process_input(evt):
-                    break
+            if evt:
+                for proc in processors:
+                    if proc.process_input(evt):
+                        break
+            else:
+                print "mm ignored: ", data
             gotData = True
 
         data = self.__g19.read_g_and_m_keys()
         if data:
-            print "m/g: ", data
+            evt = self.__state.packet_received_g_and_m(data)
+            if evt:
+                for proc in processors:
+                    if proc.process_input(evt):
+                        break
+            else:
+                print "m/g ignored: ", data
             gotData = True
 
         data = self.__g19.read_display_menu_keys()
