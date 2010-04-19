@@ -29,6 +29,14 @@ experimenting, I'll change this file.
 
 === What it does right now ===
 
+--- Color ---
+
+By selecting M1..3 you select red/green/blue for manipulation.  Using the scroll
+you can adjust the current backlight value.
+
+
+--- Xplanet ---
+
 If you have 'xplanet' installed, you can start "python main.py" and press the
 "play"/"stop" buttons to rotate the eart in your display.
 

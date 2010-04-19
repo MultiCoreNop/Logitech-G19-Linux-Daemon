@@ -1,4 +1,5 @@
 from logitech.g19 import G19
+from logitech.applets.simple_bg_light.simple_bg_light import SimpleBgLight
 from logitech.applets.xplanet.xplanet import Xplanet
 
 import time
@@ -8,6 +9,8 @@ if __name__ == '__main__':
     lg19.start_event_handling()
     try:
         xplanet = Xplanet(lg19)
+        bgLight = SimpleBgLight(lg19)
+        lg19.add_applet(bgLight)
         lg19.add_applet(xplanet)
         while True:
             time.sleep(10)
