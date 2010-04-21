@@ -39,34 +39,46 @@ class SimpleBgLight(object):
         return self
 
     def process_input(self, evt):
+        processed = False
         if Key.M1 in evt.keysDown:
             self.__redEnabled = not self.__redEnabled
             self._update_leds()
+            processed = True
         if Key.M2 in evt.keysDown:
             self.__greenEnabled = not self.__greenEnabled
             self._update_leds()
+            processed = True
         if Key.M3 in evt.keysDown:
             self.__blueEnabled = not self.__blueEnabled
             self._update_leds()
+            processed = True
 
         oldColor = list(self.__curColor)
         diffVal = 0
+        scrollUsed = False
 
         if Key.SCROLL_UP in evt.keysDown:
             diffVal = 10
+            scrollUsed = True
         if Key.SCROLL_DOWN in evt.keysDown:
             diffVal = -10
+            scrollUsed = True
+
+        atLeastOneColorIsEnabled = False
 
         if self.__redEnabled:
             self.__curColor[0] += diffVal
+            atLeastOneColorIsEnabled = True
         if self.__greenEnabled:
             self.__curColor[1] += diffVal
+            atLeastOneColorIsEnabled = True
         if self.__blueEnabled:
             self.__curColor[2] += diffVal
+            atLeastOneColorIsEnabled = True
 
         self._clamp_current_color()
+        processed = processed or atLeastOneColorIsEnabled and scrollUsed
 
         if oldColor != self.__curColor:
             self.__lg19.set_bg_color(*self.__curColor)
-            return True
-        return False
+        return processed
