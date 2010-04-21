@@ -29,16 +29,23 @@ experimenting, I'll change this file.
 
 === What it does right now ===
 
+If invoked by "python main.py":
+
 --- Color ---
 
 By selecting M1..3 you select red/green/blue for manipulation.  Using the scroll
 you can adjust the current backlight value.
 
 
+--- Color ---
+
+If no M-button is selected, scrolling will change the display brightness.
+
+
 --- Xplanet ---
 
-If you have 'xplanet' installed, you can start "python main.py" and press the
-"play"/"stop" buttons to rotate the eart in your display.
+If you have 'xplanet' installed, you can press the "play"/"stop" buttons to
+rotate the earth in your display.
 
 (After pressing start, 360 images will be generated using as many CPUs as you
 have, but nonetheless it will take up to three minutes.)
