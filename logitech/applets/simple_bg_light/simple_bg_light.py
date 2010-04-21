@@ -68,3 +68,5 @@ class SimpleBgLight(object):
 
         if oldColor != self.__curColor:
             self.__lg19.set_bg_color(*self.__curColor)
+            return True
+        return False
