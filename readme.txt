@@ -1,11 +1,11 @@
-=== Logitech G19 Linux support ===
+# Logitech G19 Linux support
 
 This is work in progress and considered absolutely alpha.  It SHOULD work, but no
 guarantees are given.  If your keyboard goes up in flames, explodes and rapes
 your hamster, don't say I didn't warn you!
 
 
-=== What you need to use this ===
+## What you need to use this
 
 Python 2.6
 pyusb (I'm using v0.4.2 atm)
@@ -15,7 +15,7 @@ xplanet
 PySide (not yet)
 
 
-=== What I want to do ===
+## What I wanted to do
 
 Refactor and build an API+framework for applets.
 Developers will get a simple way to create mini-programs of any kind.  An
@@ -27,22 +27,22 @@ So far it does not make much sense to start developing on the current code base
 experimenting, I'll change this file.
 
 
-=== What it does right now ===
+## What it does right now
 
 If invoked by "python main.py":
 
---- Color ---
+### Color
 
 By selecting M1..3 you select red/green/blue for manipulation.  Using the scroll
 you can adjust the current backlight value.
 
 
---- Color ---
+### Color 2
 
 If no M-button is selected, scrolling will change the display brightness.
 
 
---- Xplanet ---
+### Xplanet
 
 If you have 'xplanet' installed, you can press the "play"/"stop" buttons to
 rotate the earth in your display.
@@ -54,7 +54,7 @@ Currently I am working on supporting Qt on the display - let's see how far I
 get...
 
 
-=== How you can send anything you want to your G19 ===
+## How you can send anything you want to your G19
 
 Fire up a python shell.  The main API is logitech.g19.G19 atm:
 
@@ -96,5 +96,13 @@ HINT: After creating a G19 object, your "light key" will not work anymore,
       (have a look at main.py)
 
 
+## Troubleshooting
+drhexgit pointed out he had to do the following changes to display an image:
 
-As soon as I reach a stable point, I promise to write a lot of documentation. ;-)
+In rgb_to_uint16(r, g, b):
+valueL = (gBits << 5) | bBits should be:
+valueL = ((gBits & 7) << 5) | bBits
+
+in G19UsbController/init
+iface1 = config.interfaces[1][0] should be:
+iface1 = config.interfaces[0][1] 
