@@ -58,36 +58,47 @@ get...
 
 Fire up a python shell.  The main API is logitech.g19.G19 atm:
 
->>> from logitech.g19 import G19
+    >>> from logitech.g19 import G19
 
-# if you get an error: lg19 = G19(True)
->>> lg19 = G19()
+if you get an error: lg19 = G19(True)
 
-# setting backlight to red
->>> lg19.set_bg_color(255, 0, 0)
+    >>> lg19 = G19()
 
-# fill your display with green
->>> lg19.fill_display_with_color(0, 255, 0)
+setting backlight to red
 
-# test your screen
->>> lg19.set_display_colorful()
+    >>> lg19.set_bg_color(255, 0, 0)
 
-# set backlight to blue after reset
-# this will be your backlight color after a bus reset (or switching the keyboard
-# off and no)
->>> lg19.save_default_bg_color(0, 0, 255)
+fill your display with green
 
-# send an image to display
->>> data = [...] # format described in g19.py
->>> lg19.send_frame(data)
+    >>> lg19.fill_display_with_color(0, 255, 0)
 
-# load an arbitrary image from disk to display (will be resized non-uniform)
->>> lg19.load_image("/path/to/myimage.jpg")
+test your screen
 
-# reset the keyboard via USB
->>> lg19.reset()
-# now you have to rebuild the connection:
->>> lg19 = G19()
+    >>> lg19.set_display_colorful()
+
+set backlight to blue after reset
+
+this will be your backlight color after a bus reset (or switching the keyboard
+off and on)
+
+    >>> lg19.save_default_bg_color(0, 0, 255)
+
+send an image to display
+
+    >>> data = [...] # format described in g19.py
+    >>> lg19.send_frame(data)
+
+load an arbitrary image from disk to display (will be resized non-uniform)
+
+    >>> lg19.load_image("/path/to/myimage.jpg")
+
+reset the keyboard via USB
+
+    >>> lg19.reset()
+
+now you have to rebuild the connection:
+
+    >>> lg19 = G19()
 
 
 HINT: After creating a G19 object, your "light key" will not work anymore,
@@ -100,9 +111,11 @@ HINT: After creating a G19 object, your "light key" will not work anymore,
 drhexgit pointed out he had to do the following changes to display an image:
 
 In rgb_to_uint16(r, g, b):
-valueL = (gBits << 5) | bBits should be:
-valueL = ((gBits & 7) << 5) | bBits
+
+    valueL = (gBits << 5) | bBits should be:
+    valueL = ((gBits & 7) << 5) | bBits
 
 in G19UsbController/init
-iface1 = config.interfaces[1][0] should be:
-iface1 = config.interfaces[0][1] 
+
+    iface1 = config.interfaces[1][0] should be:
+    iface1 = config.interfaces[0][1] 
